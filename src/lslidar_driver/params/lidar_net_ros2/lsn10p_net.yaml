@@ -1,0 +1,49 @@
+/lslidar_driver_node:
+  ros__parameters: 
+    frame_id: laser                                       #激光坐标
+    group_ip: 224.1.1.2
+    add_multicast: false 
+    device_ip: 192.168.1.200                                 #雷达源IP
+    device_ip_difop: 192.168.1.102                          #雷达目的ip
+    msop_port: 2368                                         #雷达目的端口号
+    difop_port: 2369                                        #雷达源端口号
+    lidar_name: N10_P                                         #雷达选择:M10 M10_P M10_PLUS M10_GPS N10 L10 N10_P
+    # 两个值相同表示不裁剪，发布完整 0°–360° 扫描。
+    angle_disable_min: 0.0
+    angle_disable_max: 0.0
+    min_range: 0.2                                          #雷达接收距离最小值
+    max_range: 200.0                                        #雷达接收距离最大值
+    use_gps_ts: false                                       #雷达是否使用GPS授时
+    scan_topic: /scan                                       #设置激光数据topic名称
+    interface_selection: net                             #接口选择:net 为网口,serial 为串口。
+    serial_port_: /dev/wheeltec_laser                              #串口连接时的串口号
+    high_reflection: false                                  #M10_P雷达需填写该值,若不确定，请联系技术支持。
+    compensation: false                                      #M10系列是否使用角度补偿功能
+    pubScan: true                                           #是否发布scan话题
+    pubPointCloud2: false                                    #是否发布pointcloud2话题
+    pointcloud_topic: /lslidar_point_cloud                  #设置激光数据topic名称
+    lcp_enabled: true
+    lcp_init_scans: 20
+    lcp_nearest_return_window_deg: 8.0
+    lcp_nearest_return_margin_m: 0.35
+    lcp_tilt_max_deg: 15.0
+    lcp_attitude_timeout_ms: 500
+    lcp_flight_state_timeout_ms: 2000
+    lcp_scan_timeout_ms: 500
+    lcp_min_valid_points: 24
+    lcp_min_wall_points: 3
+    lcp_min_quadrant_points: 3
+    lcp_max_fit_points: 360
+    lcp_wall_inlier_threshold_m: 0.15
+    lcp_max_wall_residual_m: 0.10
+    lcp_max_rectangle_residual_m: 0.60
+    lcp_stability_threshold_m: 0.15
+    lcp_stability_size_ratio: 0.05
+    lcp_map_match_threshold_m: 0.30
+    lcp_map_size_tolerance_m: 0.30
+    lcp_map_size_tolerance_ratio: 0.10
+    mavros_state_topic: /mavros/state
+    mavros_extended_state_topic: /mavros/extended_state
+    mavros_imu_topic: /mavros/imu/data
+#    pcap: /home/ls/1.pcap                                  #雷达是否使用pcap包读取功能
+#    in_file_name: /home/ls/1.txt                           #雷达是否使用txt文件读取功能
