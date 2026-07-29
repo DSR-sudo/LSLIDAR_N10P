@@ -100,8 +100,19 @@ void LslidarDriver::processLcpScan(const std::vector<ScanPoint> &points,
 	std_msgs::msg::UInt8 status;
 	status.data = result.status;
 	lcp_status_pub_->publish(status);
-	if (result.status != lcp::kStatusLocked || !result.pose_valid || !result.debug.valid)
+	if (result.status != lcp::kStatusLocked || !result.pose_valid || !result.debug.valid) {
+		// 非锁定状态不发布位姿，但保留限频诊断，便于区分姿态、扫描和几何拟合门禁。
+		if (result.status == lcp::kStatusUnhealthy) {
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 2000, "LCP status=%u: %s",
+				static_cast<unsigned int>(result.status), result.diagnostic.c_str());
+		} else {
+			RCLCPP_INFO_THROTTLE(
+				get_logger(), *get_clock(), 2000, "LCP status=%u: %s",
+				static_cast<unsigned int>(result.status), result.diagnostic.c_str());
+		}
 		return;
+	}
 	const char *const output_frame = lcp_core_->initialHeadingIsNorth() ? "lcp_nwu" : "lcp_map";
 
 	nav_msgs::msg::Odometry odometry;
