@@ -23,30 +23,52 @@
     pubPointCloud2: false                                    #是否发布pointcloud2话题
     pointcloud_topic: /lslidar_point_cloud                  #设置激光数据topic名称
     lcp_enabled: true
-    # Place laser/vehicle forward on true north before calling the LCP start
-    # service.  Then /lcp/yaw is 0 rad at initialization in frame lcp_nwu.
+    # 建系前使雷达 +X/机头指向人工确认的正北；建系后公开坐标系为 lcp_nwu，初始 yaw=0。
     lcp_initial_heading_is_north: true
+    # 建系时连续满足几何稳定条件的完整 360 度扫描帧数；不足时保持 STATUS=1。
     lcp_init_scans: 20
-    lcp_nearest_return_window_deg: 8.0
+    # 局部角邻域宽度。用于剔除穿过网罩/开口、比邻近最近回波远很多的回波。
+    lcp_nearest_return_window_deg: 5.0
+    # 候选回波比该邻域最近回波远超过此距离时剔除，单位 m。
     lcp_nearest_return_margin_m: 0.35
+    # roll 或 pitch 超过此值即 STATUS=3，单位 deg。
     lcp_tilt_max_deg: 15.0
+    # MAVROS IMU 姿态消息的最大允许年龄，单位 ms。
     lcp_attitude_timeout_ms: 500
+    # MAVROS 飞控连接/地面状态消息的最大允许年龄，单位 ms。
     lcp_flight_state_timeout_ms: 2000
+    # 完整雷达扫描的最大允许间隔，单位 ms。
     lcp_scan_timeout_ms: 500
+    # 通过距离与邻域过滤后，整圈扫描至少保留的点数。
     lcp_min_valid_points: 24
+    # 每条拟合墙面至少需要的近似正向内点数。
     lcp_min_wall_points: 3
+    # 每个机体系象限至少需要的过滤后回波数。
     lcp_min_quadrant_points: 3
+    # 为限制计算量，墙线拟合时全局均匀降采样后的最多点数。
     lcp_max_fit_points: 360
+    # 点到候选墙线的内点半宽，单位 m。
     lcp_wall_inlier_threshold_m: 0.15
+    # 所有墙线内点的 RMS 残差上限，单位 m。
     lcp_max_wall_residual_m: 0.10
+    # 拟合交点到两条相邻墙面端部的最大闭合间隙门限，单位 m。
+    # 超限会置 STATUS=3。该值不宜仅为避免告警而放宽，应先检查回波、遮挡和墙面可见范围。
     lcp_max_rectangle_residual_m: 0.60
+    # 建系连续帧之间允许的墙线/尺寸绝对变化下限，单位 m。
     lcp_stability_threshold_m: 0.15
+    # 建系连续帧之间允许的墙线/尺寸相对变化上限；实际容差取绝对与相对项的较大者。
     lcp_stability_size_ratio: 0.05
+    # 已锁图后，当前矩形经平移配准到锁定地图的 RMS 残差上限，单位 m。
     lcp_map_match_threshold_m: 0.30
+    # 已锁图后，地图 X/Y 尺寸相对锁图尺寸的绝对容差，单位 m。
     lcp_map_size_tolerance_m: 0.30
+    # 已锁图后，地图 X/Y 尺寸相对锁图尺寸的比例容差；实际容差取绝对与比例项的较大者。
     lcp_map_size_tolerance_ratio: 0.10
+    # MAVROS 连接、模式与解锁状态话题。
     mavros_state_topic: /mavros/state
+    # MAVROS 落地状态话题。
     mavros_extended_state_topic: /mavros/extended_state
+    # MAVROS 姿态话题，用于倾角和姿态新鲜度检查。
     mavros_imu_topic: /mavros/imu/data
 #    pcap: /home/ls/1.pcap                                  #雷达是否使用pcap包读取功能
 #    in_file_name: /home/ls/1.txt                           #雷达是否使用txt文件读取功能

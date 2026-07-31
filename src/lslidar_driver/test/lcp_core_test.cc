@@ -77,6 +77,20 @@ std::vector<ScanPoint> makeMeshAndOuterScan()
 	return scan;
 }
 
+std::vector<ScanPoint> replaceBodyAngleInterval(
+	const std::vector<ScanPoint> &inner, const std::vector<ScanPoint> &replacement,
+	double start_deg, double end_deg)
+{
+	EXPECT_EQ(inner.size(), replacement.size());
+	auto scan = inner;
+	for (size_t index = 0; index < scan.size(); ++index) {
+		const double body_angle = std::fmod(-scan[index].degree + 360.0, 360.0);
+		if (body_angle >= start_deg && body_angle <= end_deg)
+			scan[index].range = replacement[index].range;
+	}
+	return scan;
+}
+
 Config testConfig(unsigned init_scans = 3)
 {
 	Config config;
@@ -232,6 +246,40 @@ TEST(LcpCore, PrefersNearMeshWallsOverMoreFrequentOuterReturns)
 	// and supplies five times as many returns, so this fails with the former
 	// support-count-first / farthest-tie-break selection rule.
 	EXPECT_NEAR(locked.pose.yaw_rad, 0.0, 0.12);
+}
+
+TEST(LcpCore, UsesWallEndpointsInsteadOfDistantQuadrantReturnsForCornerClosure)
+{
+	LcpCore core(testConfig(1));
+	const MavrosSnapshot mavros = healthyMavros(0.0);
+	startAt(core, mavros);
+	const auto inner = makeScan(4.0, 3.0, 0.0, 0.0, 0.0);
+	const auto outer = makeScan(9.0, 7.0, 0.0, 0.0, 0.0);
+	// This continuous 20 degree distant wedge survives the local nearest-return
+	// filter. The inner X and Y wall segments still extend to the corner.
+	const auto scan = replaceBodyAngleInterval(inner, outer, 30.0, 50.0);
+
+	const auto locked = core.processScan(scan, 0.1, 0.1, mavros);
+	EXPECT_EQ(locked.status, lslidar_driver::lcp::kStatusLocked);
+	EXPECT_TRUE(locked.pose_valid);
+}
+
+TEST(LcpCore, RejectsCornerWithoutBothAdjacentWallEndpoints)
+{
+	Config config = testConfig(1);
+	config.max_rectangle_residual_m = 0.20;
+	LcpCore core(config);
+	const MavrosSnapshot mavros = healthyMavros(0.0);
+	startAt(core, mavros);
+	auto scan = makeScan(4.0, 3.0, 0.0, 0.0, 0.0);
+	const auto invalid = std::vector<ScanPoint>(scan.size(), ScanPoint{0.0, 0.0, 0.0});
+	// Remove the actual +X/+Y corner wedge while retaining ample points on all
+	// four wall lines. A valid rectangle must not be inferred across this gap.
+	scan = replaceBodyAngleInterval(scan, invalid, 5.0, 80.0);
+
+	const auto result = core.processScan(scan, 0.1, 0.1, mavros);
+	EXPECT_EQ(result.status, lslidar_driver::lcp::kStatusUnhealthy);
+	EXPECT_EQ(result.diagnostic, "rectangle corner closure gap is too large");
 }
 
 TEST(LcpCore, TiltAndTimeoutSuppressPoseThenRecoverWithoutRelocking)
