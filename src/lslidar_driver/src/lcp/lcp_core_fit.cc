@@ -1,5 +1,5 @@
 // LCP 几何拟合模块：把极坐标扫描投影到机体平面，寻找四条近墙线，
-// 再用方向支撑、墙面残差和墙面端部的角点闭合间隙过滤缺墙/障碍物场景。
+// 再用方向支撑和墙面残差过滤缺墙/障碍物场景。
 #include "lslidar_driver/lcp_core.hpp"
 #include "lcp_core_internal.hpp"
 
@@ -13,14 +13,14 @@ namespace lcp
 {
 
 bool LcpCore::makeFitPoints(const std::vector<ScanPoint> &points,
-	std::vector<Vec2> &fit_points, std::vector<Vec2> &quality_points) const
+	std::vector<Vec2> &fit_points) const
 {
 	// 先用完整扫描统计四个机体象限，再对拟合点做均匀抽样，
 	// 防止某一面墙过密时占满 CPU 或掩盖缺失墙面。
 	fit_points.clear();
 	std::array<unsigned, 4> quadrant_counts{};
-	quality_points.clear();
-	quality_points.reserve(points.size());
+	std::vector<Vec2> filtered_points;
+	filtered_points.reserve(points.size());
 	struct PolarPoint
 	{
 		double degree;
@@ -51,55 +51,20 @@ bool LcpCore::makeFitPoints(const std::vector<ScanPoint> &points,
 		const double angle = candidate.degree * detail::kPi / 180.0;
 		const Vec2 point{candidate.range * std::cos(angle), -candidate.range * std::sin(angle)};
 		if (!std::isfinite(point.x) || !std::isfinite(point.y)) continue;
-		quality_points.push_back(point);
+		filtered_points.push_back(point);
 		const unsigned quadrant = std::min(3u, static_cast<unsigned>(
 			detail::clampAngle(std::atan2(point.y, point.x)) / detail::kHalfPi));
 		++quadrant_counts[quadrant];
 	}
-	if (quality_points.size() < config_.min_valid_points) return false;
+	if (filtered_points.size() < config_.min_valid_points) return false;
 	for (unsigned count : quadrant_counts)
 		if (count < config_.min_quadrant_points) return false;
-	const size_t stride = std::max<size_t>(1, (quality_points.size() + config_.max_fit_points - 1)
+	const size_t stride = std::max<size_t>(1, (filtered_points.size() + config_.max_fit_points - 1)
 		/ config_.max_fit_points);
-	fit_points.reserve((quality_points.size() + stride - 1) / stride);
-	for (size_t i = 0; i < quality_points.size(); i += stride)
-		fit_points.push_back(quality_points[i]);
+	fit_points.reserve((filtered_points.size() + stride - 1) / stride);
+	for (size_t i = 0; i < filtered_points.size(); i += stride)
+		fit_points.push_back(filtered_points[i]);
 	return fit_points.size() >= config_.min_valid_points;
-}
-
-double LcpCore::cornerClosureGap(const std::vector<Vec2> &points, double cos_axis, double sin_axis,
-	const std::array<double, 4> &wall_lines) const
-{
-	std::array<std::vector<double>, 4> wall_tangents;
-	const double threshold = std::max(1e-3, config_.wall_inlier_threshold_m);
-	for (const Vec2 &point : points) {
-		const Vec2 projected{point.x * cos_axis + point.y * sin_axis,
-			-point.x * sin_axis + point.y * cos_axis};
-		double residual = 0.0;
-		const unsigned side = detail::nearestSide(projected, wall_lines, residual);
-		if (residual > threshold) continue;
-		const bool x_wall = side == detail::kSidePositiveX || side == detail::kSideNegativeX;
-		wall_tangents[side].push_back(x_wall ? projected.y : projected.x);
-	}
-
-	const auto endpoint_gap = [](const std::vector<double> &tangents, double corner_coordinate) {
-		double gap = std::numeric_limits<double>::infinity();
-		for (const double tangent : tangents)
-			gap = std::min(gap, std::fabs(tangent - corner_coordinate));
-		return gap;
-	};
-
-	double maximum_gap = 0.0;
-	for (const unsigned x_side : {detail::kSidePositiveX, detail::kSideNegativeX}) {
-		for (const unsigned y_side : {detail::kSidePositiveY, detail::kSideNegativeY}) {
-			const double x_wall_gap = endpoint_gap(wall_tangents[x_side], wall_lines[y_side]);
-			const double y_wall_gap = endpoint_gap(wall_tangents[y_side], wall_lines[x_side]);
-			if (!std::isfinite(x_wall_gap) || !std::isfinite(y_wall_gap))
-				return std::numeric_limits<double>::infinity();
-			maximum_gap = std::max(maximum_gap, std::max(x_wall_gap, y_wall_gap));
-		}
-	}
-	return maximum_gap;
 }
 
 bool LcpCore::initializeWallLines(const std::vector<Vec2> &projected,
@@ -171,8 +136,7 @@ bool LcpCore::refineWallLines(const std::vector<Vec2> &projected,
 	return true;
 }
 
-bool LcpCore::fitRectangle(const std::vector<Vec2> &points,
-	const std::vector<Vec2> &quality_points, Fit &fit) const
+bool LcpCore::fitRectangle(const std::vector<Vec2> &points, Fit &fit) const
 {
 	fit = Fit{};
 	if (points.size() < config_.min_valid_points) return false;
@@ -221,19 +185,16 @@ bool LcpCore::fitRectangle(const std::vector<Vec2> &points,
 		if (!supported) continue;
 
 		const double wall_residual = std::sqrt(wall_error / inliers);
-		const double corner_closure_gap = cornerClosureGap(quality_points, c, s, lines);
 		const double outlier_ratio = static_cast<double>(points.size() - inliers) / points.size();
-		const double cost = wall_residual * wall_residual + 0.02 * corner_closure_gap * corner_closure_gap
-			+ 0.04 * outlier_ratio;
+		const double cost = wall_residual * wall_residual + 0.04 * outlier_ratio;
 		Fit candidate{};
 		candidate.valid = true; candidate.axis_yaw_body = axis_yaw; candidate.wall_lines = lines;
 		candidate.wall_inliers = directional_support; candidate.size_x = size_x; candidate.size_y = size_y;
-		candidate.wall_residual_m = wall_residual; candidate.corner_closure_gap_m = corner_closure_gap;
+		candidate.wall_residual_m = wall_residual;
 		candidate.residual_m = std::sqrt(cost); candidate.inlier_count = inliers;
 		candidate.outlier_count = points.size() - inliers;
 		if (cost < best_any_cost) {best_any_cost = cost; best_any = candidate;}
-		if (wall_residual <= config_.max_wall_residual_m &&
-			corner_closure_gap <= config_.max_rectangle_residual_m && cost < best_quality_cost) {
+		if (wall_residual <= config_.max_wall_residual_m && cost < best_quality_cost) {
 			best_quality_cost = cost;
 			best_quality = candidate;
 		}

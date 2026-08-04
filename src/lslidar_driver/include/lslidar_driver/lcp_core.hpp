@@ -54,10 +54,6 @@ struct Config
 	// The line estimator uses this as a consensus half-width.
 	double wall_inlier_threshold_m{0.15};
 	double max_wall_residual_m{0.10};
-	// Maximum unobserved gap between an implied corner and the endpoints of
-	// both adjacent fitted walls. This is a corner-closure check, not the
-	// distance from an arbitrary far return to a corner.
-	double max_rectangle_residual_m{0.60};
 	double stability_threshold_m{0.15};
 	double stability_size_ratio{0.05};
 	double map_match_threshold_m{0.30};
@@ -169,7 +165,6 @@ private:
 		double size_x{0.0};
 		double size_y{0.0};
 		double wall_residual_m{0.0};
-		double corner_closure_gap_m{0.0};
 		double residual_m{0.0};
 		unsigned inlier_count{0};
 		unsigned outlier_count{0};
@@ -189,14 +184,8 @@ private:
 	static int sideIndex(unsigned axis, int sign);
 
 	bool makeFitPoints(const std::vector<ScanPoint> &points,
-				  std::vector<Vec2> &fit_points,
-				  std::vector<Vec2> &quality_points) const;
-	/// Measure the largest gap between a fitted corner and both adjacent wall segments.
-	double cornerClosureGap(const std::vector<Vec2> &points, double cos_axis, double sin_axis,
-					const std::array<double, 4> &wall_lines) const;
-	bool fitRectangle(const std::vector<Vec2> &points,
-				  const std::vector<Vec2> &quality_points,
-				  Fit &fit) const;
+				  std::vector<Vec2> &fit_points) const;
+	bool fitRectangle(const std::vector<Vec2> &points, Fit &fit) const;
 	bool initializeWallLines(const std::vector<Vec2> &projected,
 					std::array<double, 4> &wall_lines,
 					std::array<unsigned, 4> &supports) const;

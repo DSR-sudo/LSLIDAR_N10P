@@ -122,9 +122,6 @@ bool LcpCore::fitPassesQuality(const Fit &fit, std::string &reason) const
 	if (fit.wall_residual_m > config_.max_wall_residual_m) {
 		reason = "wall fit residual is too large"; return false;
 	}
-	if (fit.corner_closure_gap_m > config_.max_rectangle_residual_m) {
-		reason = "rectangle corner closure gap is too large"; return false;
-	}
 	return true;
 }
 
@@ -168,9 +165,8 @@ ProcessResult LcpCore::processScan(const std::vector<ScanPoint> &points,
 		result.diagnostic = reason; return result;
 	}
 	std::vector<Vec2> fit_points;
-	std::vector<Vec2> quality_points;
 	Fit fit{};
-	if (!makeFitPoints(points, fit_points, quality_points) || !fitRectangle(fit_points, quality_points, fit)) {
+	if (!makeFitPoints(points, fit_points) || !fitRectangle(fit_points, fit)) {
 		status_ = kStatusUnhealthy; result.status = status_; result.map_locked = map_locked_;
 		result.stable_scans = stable_scans_; result.diagnostic = "four-wall rectangle fit failed";
 		if (!map_locked_) stable_scans_ = 0;

@@ -36,7 +36,6 @@
     lcp_max_fit_points: 360
     lcp_wall_inlier_threshold_m: 0.15
     lcp_max_wall_residual_m: 0.10
-    lcp_max_rectangle_residual_m: 0.60
     lcp_stability_threshold_m: 0.15
     lcp_stability_size_ratio: 0.05
     lcp_map_match_threshold_m: 0.30

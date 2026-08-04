@@ -55,7 +55,6 @@ bool LslidarDriver::loadParameters()
 	this->declare_parameter<int>("lcp_max_fit_points", 360);
 	this->declare_parameter<double>("lcp_wall_inlier_threshold_m", 0.15);
 	this->declare_parameter<double>("lcp_max_wall_residual_m", 0.10);
-	this->declare_parameter<double>("lcp_max_rectangle_residual_m", 0.60);
 	this->declare_parameter<double>("lcp_stability_threshold_m", 0.15);
 	this->declare_parameter<double>("lcp_stability_size_ratio", 0.05);
 	this->declare_parameter<double>("lcp_map_match_threshold_m", 0.30);
@@ -112,7 +111,6 @@ bool LslidarDriver::loadParameters()
 	this->get_parameter("lcp_max_fit_points", max_fit);
 	this->get_parameter("lcp_wall_inlier_threshold_m", lcp_config.wall_inlier_threshold_m);
 	this->get_parameter("lcp_max_wall_residual_m", lcp_config.max_wall_residual_m);
-	this->get_parameter("lcp_max_rectangle_residual_m", lcp_config.max_rectangle_residual_m);
 	this->get_parameter("lcp_stability_threshold_m", lcp_config.stability_threshold_m);
 	this->get_parameter("lcp_stability_size_ratio", lcp_config.stability_size_ratio);
 	this->get_parameter("lcp_map_match_threshold_m", lcp_config.map_match_threshold_m);

@@ -51,9 +51,6 @@
     lcp_wall_inlier_threshold_m: 0.15
     # 所有墙线内点的 RMS 残差上限，单位 m。
     lcp_max_wall_residual_m: 0.10
-    # 拟合交点到两条相邻墙面端部的最大闭合间隙门限，单位 m。
-    # 超限会置 STATUS=3。该值不宜仅为避免告警而放宽，应先检查回波、遮挡和墙面可见范围。
-    lcp_max_rectangle_residual_m: 0.60
     # 建系连续帧之间允许的墙线/尺寸绝对变化下限，单位 m。
     lcp_stability_threshold_m: 0.15
     # 建系连续帧之间允许的墙线/尺寸相对变化上限；实际容差取绝对与相对项的较大者。
